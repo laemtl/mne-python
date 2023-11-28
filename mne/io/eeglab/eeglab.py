@@ -428,12 +428,6 @@ class RawEEGLAB(BaseRaw):
     ):  # noqa: D102
         input_fname = str(_check_fname(input_fname, "read", True, "input_fname"))
         eeg = _check_load_mat(input_fname, uint16_codec)
-        if eeg.trials != 1:
-            raise TypeError(
-                "The number of trials is %d. It must be 1 for raw"
-                " files. Please use `mne.io.read_epochs_eeglab` if"
-                " the .set file contains epochs." % eeg.trials
-            )
 
         last_samps = [eeg.pnts - 1]
         scale_units = _handle_montage_units(montage_units)
@@ -463,9 +457,14 @@ class RawEEGLAB(BaseRaw):
             # different reading path (.set file)
             if eeg.nbchan == 1 and len(eeg.data.shape) == 1:
                 n_chan, n_times = [1, eeg.data.shape[0]]
+                data = np.empty((n_chan, n_times), dtype=float)
+            elif eeg.trials != 1:
+                n_chan = eeg.data.shape[0]
+                n_times = eeg.data.shape[1]
+                data = np.empty((n_chan, n_times, eeg.trials), dtype=float)
             else:
                 n_chan, n_times = eeg.data.shape
-            data = np.empty((n_chan, n_times), dtype=float)
+                data = np.empty((n_chan, n_times), dtype=float)
             data[:n_chan] = eeg.data
             data *= CAL
             super(RawEEGLAB, self).__init__(
